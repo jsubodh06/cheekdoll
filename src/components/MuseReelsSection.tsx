@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ArrowRight,
+  ChevronLeft,
+  ChevronRight,
   ChevronsLeft,
   ChevronsRight,
   Pause,
@@ -11,6 +13,7 @@ import {
 } from 'lucide-react';
 import { MUSE_REELS, PRODUCTS, formatINR } from '../data/catalog';
 import { useStore } from '../context/StoreContext';
+import { useHorizontalSwipe } from '../hooks/useHorizontalSwipe';
 
 export const MuseReelsSection: React.FC = () => {
   const { selectRackProduct, addToCart } = useStore();
@@ -20,6 +23,7 @@ export const MuseReelsSection: React.FC = () => {
   const [progress, setProgress] = useState(32);
   const [modalReelIndex, setModalReelIndex] = useState<number | null>(null);
   const [modalMuted, setModalMuted] = useState(false);
+  const pillStripRef = useRef<HTMLDivElement | null>(null);
 
   const total = MUSE_REELS.length;
 
@@ -37,6 +41,17 @@ export const MuseReelsSection: React.FC = () => {
     return () => window.clearInterval(id);
   }, [isPlaying, total]);
 
+  // Keep active reel chip centered in mobile horizontal scroll strip
+  useEffect(() => {
+    const el = pillStripRef.current;
+    if (!el) return;
+    const btn = el.children[activeIndex] as HTMLElement | undefined;
+    if (btn) {
+      const targetLeft = btn.offsetLeft - el.clientWidth / 2 + btn.clientWidth / 2;
+      el.scrollTo({ left: targetLeft, behavior: 'smooth' });
+    }
+  }, [activeIndex]);
+
   const goPrev = () => {
     setActiveIndex((prev) => (prev - 1 + total) % total);
     setProgress(0);
@@ -46,6 +61,15 @@ export const MuseReelsSection: React.FC = () => {
     setActiveIndex((prev) => (prev + 1) % total);
     setProgress(0);
   };
+
+  const arcSwipeHandlers = useHorizontalSwipe({ onPrev: goPrev, onNext: goNext });
+
+  const modalSwipeHandlers = useHorizontalSwipe({
+    onPrev: () =>
+      setModalReelIndex((prev) => (prev === null ? null : (prev - 1 + total) % total)),
+    onNext: () =>
+      setModalReelIndex((prev) => (prev === null ? null : (prev + 1) % total)),
+  });
 
   const modalReel = modalReelIndex !== null ? MUSE_REELS[modalReelIndex] : null;
   const modalProduct = modalReel
@@ -59,7 +83,7 @@ export const MuseReelsSection: React.FC = () => {
     >
       <div className="max-w-[1380px] mx-auto">
         {/* Header with Top-Right Controls matching Blueprint */}
-        <div className="relative flex flex-col sm:flex-row items-center justify-between gap-4 mb-12">
+        <div className="relative flex flex-col sm:flex-row items-center justify-between gap-4 mb-10 sm:mb-12">
           <div className="hidden sm:block w-36" aria-hidden="true" />
 
           <div className="text-center">
@@ -100,9 +124,10 @@ export const MuseReelsSection: React.FC = () => {
           </div>
         </div>
 
-        {/* 3D Curved Arc of 5 Vertical Fashion Reel Cards */}
+        {/* 3D Curved Arc of 5 Vertical Fashion Reel Cards with Touch Swipe + Trackpad Wheel */}
         <div
-          className="relative h-[430px] sm:h-[490px] flex items-center justify-center select-none"
+          {...arcSwipeHandlers}
+          className="relative h-[420px] sm:h-[490px] flex items-center justify-center select-none touch-pan-y cursor-grab active:cursor-grabbing"
           style={{ perspective: '1500px' }}
         >
           <div className="relative w-full h-full flex items-center justify-center preserve-3d">
@@ -134,7 +159,7 @@ export const MuseReelsSection: React.FC = () => {
                     }
                   }}
                   aria-label={`${reel.number}: ${reel.title} — ${reel.category}`}
-                  className={`absolute top-1/2 left-1/2 w-[215px] sm:w-[248px] h-[370px] sm:h-[430px] rounded-[22px] overflow-hidden text-left bg-[#1C1618] focus-visible:outline-2 focus-visible:outline-[#702D45] ${
+                  className={`absolute top-1/2 left-1/2 w-[210px] sm:w-[248px] h-[365px] sm:h-[430px] rounded-[22px] overflow-hidden text-left bg-[#1C1618] focus-visible:outline-2 focus-visible:outline-[#702D45] ${
                     isCenter ? 'ring-2 ring-[#C6A46A]' : 'ring-1 ring-white/20'
                   }`}
                   style={{
@@ -150,34 +175,30 @@ export const MuseReelsSection: React.FC = () => {
                       : '0 16px 34px -14px rgba(40, 35, 38, 0.28)',
                   }}
                 >
-                  {/* Vertical Portrait Media */}
                   <img
                     src={reel.image}
                     alt={reel.title}
                     loading="lazy"
                     referrerPolicy="no-referrer"
+                    draggable={false}
                     className={`w-full h-full object-cover object-center ${
                       isCenter && isPlaying ? 'animate-ken-burns' : ''
                     }`}
                   />
 
-                  {/* Editorial Gradient Scrim */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-black/45" />
 
-                  {/* Top Metadata: Reel Number & Duration */}
                   <div className="absolute top-3.5 inset-x-4 flex items-center justify-between text-[11px] font-medium text-white/90 tabular-nums">
                     <span className="tracking-wider uppercase">{reel.number}</span>
                     <span>{reel.duration}</span>
                   </div>
 
-                  {/* Center Play Button on Active Reel */}
                   {isCenter && (
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-13 h-13 rounded-full bg-black/50 backdrop-blur-md border border-[#E6CB96]/80 text-white flex items-center justify-center shadow-lg">
                       <Play className="w-5 h-5 fill-current ml-0.5" />
                     </div>
                   )}
 
-                  {/* Bottom Editorial Caption + Gold Progress Bar */}
                   <div className="absolute bottom-4 inset-x-4">
                     <h3 className="font-condensed text-2xl font-bold uppercase tracking-wide text-white leading-none">
                       {reel.title}
@@ -201,13 +222,40 @@ export const MuseReelsSection: React.FC = () => {
           </div>
         </div>
 
-        <p className="mt-4 text-center text-xs text-[#282326]/55">
-          Tap the centre reel to watch full-screen and shop the featured look.
+        {/* Horizontally Scrollable Reel Selector Strip for Mobile & Quick Jump */}
+        <div
+          ref={pillStripRef}
+          className="mt-4 flex items-center gap-2 overflow-x-auto snap-x snap-mandatory no-scrollbar py-1 justify-start sm:justify-center"
+        >
+          {MUSE_REELS.map((reel, idx) => {
+            const isSelected = idx === activeIndex;
+            return (
+              <button
+                key={reel.id}
+                type="button"
+                onClick={() => {
+                  setActiveIndex(idx);
+                  setProgress(0);
+                }}
+                className={`snap-center shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all whitespace-nowrap ${
+                  isSelected
+                    ? 'bg-[#702D45] text-white border-[#702D45] shadow-xs'
+                    : 'bg-white text-[#282326]/70 border-[#E5D7DC] hover:border-[#702D45]/45'
+                }`}
+              >
+                {reel.number} · {reel.title}
+              </button>
+            );
+          })}
+        </div>
+
+        <p className="mt-3 text-center text-xs text-[#282326]/55">
+          Swipe left or right to switch reels · Tap the centre reel to watch full-screen.
         </p>
       </div>
 
-      {/* Full-Screen Immersive Reel Theatre Modal */}
-      {modalReel && (
+      {/* Full-Screen Immersive Reel Theatre Modal with Swipe & Prev/Next Controls */}
+      {modalReel && modalReelIndex !== null && (
         <div
           role="dialog"
           aria-modal="true"
@@ -216,8 +264,9 @@ export const MuseReelsSection: React.FC = () => {
           onClick={() => setModalReelIndex(null)}
         >
           <div
+            {...modalSwipeHandlers}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-[430px] aspect-[9/15] max-h-[88vh] rounded-[28px] overflow-hidden bg-[#191316] border border-[#C6A46A]/60 shadow-2xl"
+            className="relative w-full max-w-[430px] aspect-[9/15] max-h-[88vh] rounded-[28px] overflow-hidden bg-[#191316] border border-[#C6A46A]/60 shadow-2xl touch-pan-y"
           >
             <img
               src={modalReel.image}
@@ -251,6 +300,24 @@ export const MuseReelsSection: React.FC = () => {
                 </button>
               </div>
             </div>
+
+            {/* Modal Prev / Next Overlay Buttons */}
+            <button
+              type="button"
+              onClick={() => setModalReelIndex((modalReelIndex - 1 + total) % total)}
+              aria-label="Previous reel"
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/45 hover:bg-black/75 text-white border border-white/20 flex items-center justify-center"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setModalReelIndex((modalReelIndex + 1) % total)}
+              aria-label="Next reel"
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/45 hover:bg-black/75 text-white border border-white/20 flex items-center justify-center"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
 
             {/* Bottom Info + Shop Featured Outfit */}
             <div className="absolute bottom-5 inset-x-5">

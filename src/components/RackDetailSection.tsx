@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ArrowRight,
   Check,
@@ -13,6 +13,7 @@ import {
 import { ALL_SIZES, PRODUCTS, formatINR } from '../data/catalog';
 import { useStore } from '../context/StoreContext';
 import { SizeOption } from '../types';
+import { useHorizontalSwipe } from '../hooks/useHorizontalSwipe';
 
 export const RackDetailSection: React.FC = () => {
   const {
@@ -37,6 +38,7 @@ export const RackDetailSection: React.FC = () => {
   const [showAvailability, setShowAvailability] = useState(false);
   const [activeTab, setActiveTab] = useState<'description' | 'fabric' | 'care'>('description');
   const [sizePrompt, setSizePrompt] = useState(false);
+  const railStripRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setViewMode('front');
@@ -45,6 +47,17 @@ export const RackDetailSection: React.FC = () => {
     setShowAvailability(false);
     setSizePrompt(false);
   }, [product.id]);
+
+  // Keep active mini-hanger scrolled into view
+  useEffect(() => {
+    const el = railStripRef.current;
+    if (!el) return;
+    const item = el.children[currentIdx] as HTMLElement | undefined;
+    if (item) {
+      const targetLeft = item.offsetLeft - el.clientWidth / 2 + item.clientWidth / 2;
+      el.scrollTo({ left: targetLeft, behavior: 'smooth' });
+    }
+  }, [currentIdx]);
 
   const goPrev = () => {
     const prev = (currentIdx - 1 + PRODUCTS.length) % PRODUCTS.length;
@@ -55,6 +68,8 @@ export const RackDetailSection: React.FC = () => {
     const next = (currentIdx + 1) % PRODUCTS.length;
     selectRackProduct(PRODUCTS[next].id, false);
   };
+
+  const swipeHandlers = useHorizontalSwipe({ onPrev: goPrev, onNext: goNext });
 
   const handleAddToBag = () => {
     if (!selectedSize) {
@@ -81,15 +96,13 @@ export const RackDetailSection: React.FC = () => {
       id="rack-detail"
       className="relative py-12 sm:py-16 px-4 sm:px-8 lg:px-12 overflow-hidden bg-[#EAE2DB]"
     >
-      {/* Blurred Background Clothing Rail Layer (Matches Blueprint Depth) */}
+      {/* Blurred Background Clothing Rail Layer */}
       <div
         className="absolute inset-0 overflow-hidden pointer-events-none select-none"
         aria-hidden="true"
       >
         <div className="absolute inset-0 bg-gradient-to-r from-[#DDD3CB]/90 via-[#E7DED7]/75 to-[#D9CFC8]/90" />
-        {/* Blurred Rail Rod */}
         <div className="absolute top-14 inset-x-0 h-2 bg-[#8E867E]/40 blur-[2px]" />
-        {/* Blurred Neighboring Garments on Rail */}
         <div className="absolute inset-0 flex items-center justify-around opacity-55 blur-[10px] scale-105">
           {PRODUCTS.slice(0, 7).map((bgProd) => (
             <div key={bgProd.id} className="w-40 h-72 shrink-0">
@@ -106,9 +119,10 @@ export const RackDetailSection: React.FC = () => {
 
       {/* Foreground 3D Product Spotlight Container */}
       <div className="relative z-10 max-w-[1360px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-        {/* Left: Lifted Floating Garment on Wooden Hanger (6 cols) */}
+        {/* Left: Lifted Floating Garment on Wooden Hanger with Touch Swipe + Scrollable Strip */}
         <div
-          className="lg:col-span-6 relative flex flex-col items-center justify-center min-h-[430px] sm:min-h-[540px]"
+          {...swipeHandlers}
+          className="lg:col-span-6 relative flex flex-col items-center justify-center min-h-[430px] sm:min-h-[540px] touch-pan-y select-none cursor-grab active:cursor-grabbing"
           style={{ perspective: '1300px' }}
         >
           {/* Left / Right Hanger Switcher Arrows */}
@@ -116,7 +130,7 @@ export const RackDetailSection: React.FC = () => {
             type="button"
             onClick={goPrev}
             aria-label="Previous garment on rail"
-            className="absolute left-1 sm:left-4 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-white/90 hover:bg-[#702D45] text-[#282326] hover:text-white shadow-lg border border-[#C6A46A]/30 flex items-center justify-center transition-colors"
+            className="absolute left-1 sm:left-4 top-[44%] -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-white/90 hover:bg-[#702D45] text-[#282326] hover:text-white shadow-lg border border-[#C6A46A]/30 flex items-center justify-center transition-colors"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
@@ -125,14 +139,14 @@ export const RackDetailSection: React.FC = () => {
             type="button"
             onClick={goNext}
             aria-label="Next garment on rail"
-            className="absolute right-1 sm:right-4 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-white/90 hover:bg-[#702D45] text-[#282326] hover:text-white shadow-lg border border-[#C6A46A]/30 flex items-center justify-center transition-colors"
+            className="absolute right-1 sm:right-4 top-[44%] -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-white/90 hover:bg-[#702D45] text-[#282326] hover:text-white shadow-lg border border-[#C6A46A]/30 flex items-center justify-center transition-colors"
           >
             <ChevronRight className="w-5 h-5" />
           </button>
 
           {/* Floating Hanger + Garment */}
           <div
-            className="relative flex flex-col items-center max-w-[360px] sm:max-w-[420px] w-full transition-transform duration-700 ease-out"
+            className="relative flex flex-col items-center max-w-[340px] sm:max-w-[410px] w-full transition-transform duration-700 ease-out"
             style={{
               transform:
                 viewMode === 'back'
@@ -140,7 +154,6 @@ export const RackDetailSection: React.FC = () => {
                   : 'translate3d(0, -6px, 40px) rotateY(0deg)',
             }}
           >
-            {/* Large Sculpted Wooden Hanger */}
             {viewMode === 'front' && (
               <svg
                 viewBox="0 0 240 82"
@@ -171,12 +184,12 @@ export const RackDetailSection: React.FC = () => {
               </svg>
             )}
 
-            {/* Spotlight Garment Stage */}
-            <div className="relative w-full aspect-[3/3.6] rounded-[28px] overflow-hidden flex items-center justify-center">
+            <div className="relative w-full aspect-[3/3.5] rounded-[28px] overflow-hidden flex items-center justify-center">
               <img
                 src={displayImage}
                 alt={`${product.name} (${viewMode} view)`}
                 referrerPolicy="no-referrer"
+                draggable={false}
                 className={`w-full h-full transition-all duration-500 ${
                   viewMode === 'front'
                     ? 'object-contain mix-blend-multiply drop-shadow-[0_24px_34px_rgba(40,35,38,0.26)]'
@@ -185,15 +198,46 @@ export const RackDetailSection: React.FC = () => {
               />
             </div>
 
-            <p className="mt-4 text-[11px] font-semibold tracking-[0.2em] uppercase text-[#282326]/65 tabular-nums">
-              Hanger {currentIdx + 1} of {PRODUCTS.length} · {product.color}
+            <p className="mt-3 text-[11px] font-semibold tracking-[0.2em] uppercase text-[#282326]/65 tabular-nums">
+              Hanger {currentIdx + 1} of {PRODUCTS.length} · Swipe or tap below
             </p>
+          </div>
+
+          {/* Mobile-Friendly Horizontally Scrollable Mini-Hanger Strip */}
+          <div className="mt-4 w-full max-w-md px-2">
+            <div
+              ref={railStripRef}
+              className="flex items-center gap-2 overflow-x-auto snap-x snap-mandatory no-scrollbar py-1.5"
+            >
+              {PRODUCTS.map((item, idx) => {
+                const isSelected = idx === currentIdx;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => selectRackProduct(item.id, false)}
+                    aria-label={`Switch spotlight to ${item.name}`}
+                    className={`snap-center shrink-0 w-12 h-14 rounded-xl p-1 bg-[#FFFDF9]/90 border-2 transition-all ${
+                      isSelected
+                        ? 'border-[#702D45] scale-105 shadow-md'
+                        : 'border-white/60 opacity-70 hover:opacity-100'
+                    }`}
+                  >
+                    <img
+                      src={item.rackImage}
+                      alt={item.name}
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-contain mix-blend-multiply"
+                    />
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
         {/* Right: Elevated Luxury Detail Card (6 cols) */}
         <div className="lg:col-span-6 rounded-[28px] bg-[#FFFDF9]/96 backdrop-blur-xl border border-[#DFD2C8] shadow-[0_24px_60px_rgba(40,35,38,0.16)] p-6 sm:p-8 lg:p-9">
-          {/* Top Header Row with Close × */}
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-[11px] font-semibold tracking-[0.22em] uppercase text-[#C6A46A]">
@@ -295,7 +339,7 @@ export const RackDetailSection: React.FC = () => {
             </div>
           </div>
 
-          {/* Size Selection Grid (1-2Y to 13-14Y) */}
+          {/* Size Selection Grid */}
           <div className="mt-5">
             <div className="flex items-center justify-between mb-2.5">
               <span className="text-xs font-semibold text-[#282326] tracking-wide">
@@ -346,7 +390,6 @@ export const RackDetailSection: React.FC = () => {
 
           {/* Quantity + Heart + Primary CTA */}
           <div className="mt-6 flex flex-wrap items-center gap-3">
-            {/* Quantity Stepper */}
             <div className="inline-flex items-center rounded-full border border-[#DDD3CA] bg-white h-12 px-2">
               <button
                 type="button"
@@ -369,7 +412,6 @@ export const RackDetailSection: React.FC = () => {
               </button>
             </div>
 
-            {/* Wishlist Heart */}
             <button
               type="button"
               onClick={() => toggleWishlist(product.id, product.name)}
@@ -383,7 +425,6 @@ export const RackDetailSection: React.FC = () => {
               <Heart className={`w-5 h-5 ${saved ? 'fill-current' : ''}`} />
             </button>
 
-            {/* Primary Add to Bag / Select Size CTA */}
             <button
               type="button"
               onClick={handleAddToBag}
@@ -394,7 +435,6 @@ export const RackDetailSection: React.FC = () => {
             </button>
           </div>
 
-          {/* See Availability Toggle */}
           <div className="mt-4 flex items-center justify-between text-xs">
             <button
               type="button"
@@ -422,15 +462,14 @@ export const RackDetailSection: React.FC = () => {
             </div>
           )}
 
-          {/* Description / Fabric / Care Tabs */}
           <div className="mt-6 pt-5 border-t border-[#EFE6DF]">
-            <div className="flex items-center gap-6 text-xs font-semibold border-b border-[#EFE6DF] pb-2.5">
+            <div className="flex items-center gap-6 text-xs font-semibold border-b border-[#EFE6DF] pb-2.5 overflow-x-auto no-scrollbar">
               {(['description', 'fabric', 'care'] as const).map((tab) => (
                 <button
                   key={tab}
                   type="button"
                   onClick={() => setActiveTab(tab)}
-                  className={`capitalize transition-colors pb-1 -mb-[11px] border-b-2 ${
+                  className={`capitalize whitespace-nowrap shrink-0 transition-colors pb-1 -mb-[11px] border-b-2 ${
                     activeTab === tab
                       ? 'text-[#702D45] border-[#702D45]'
                       : 'text-[#282326]/55 border-transparent hover:text-[#282326]'

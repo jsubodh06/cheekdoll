@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ArrowRight,
   ChevronLeft,
@@ -12,6 +12,7 @@ import {
 } from '../data/catalog';
 import { useStore } from '../context/StoreContext';
 import { Product, SizeOption } from '../types';
+import { useHorizontalSwipe } from '../hooks/useHorizontalSwipe';
 
 export const OccasionCollectionSection: React.FC = () => {
   const { addToCart, toggleWishlist, isWishlisted, selectRackProduct } = useStore();
@@ -19,10 +20,9 @@ export const OccasionCollectionSection: React.FC = () => {
     (id) => PRODUCTS.find((p) => p.id === id) || PRODUCTS[0]
   );
 
-  // Start on Blush Zari Organza Lehenga / Ivory Elegance in center
   const [activeIndex, setActiveIndex] = useState(2);
   const [chosenSize, setChosenSize] = useState<SizeOption>('5–6Y');
-  const dragStartX = useRef<number | null>(null);
+  const thumbStripRef = useRef<HTMLDivElement | null>(null);
 
   const total = occasionProducts.length;
   const activeProduct = occasionProducts[activeIndex];
@@ -30,6 +30,18 @@ export const OccasionCollectionSection: React.FC = () => {
 
   const goPrev = () => setActiveIndex((prev) => (prev - 1 + total) % total);
   const goNext = () => setActiveIndex((prev) => (prev + 1) % total);
+
+  const swipeHandlers = useHorizontalSwipe({ onPrev: goPrev, onNext: goNext });
+
+  useEffect(() => {
+    const el = thumbStripRef.current;
+    if (!el) return;
+    const item = el.children[activeIndex] as HTMLElement | undefined;
+    if (item) {
+      const targetLeft = item.offsetLeft - el.clientWidth / 2 + item.clientWidth / 2;
+      el.scrollTo({ left: targetLeft, behavior: 'smooth' });
+    }
+  }, [activeIndex]);
 
   const effectiveSize: SizeOption = activeProduct.availableSizes.includes(chosenSize)
     ? chosenSize
@@ -52,22 +64,11 @@ export const OccasionCollectionSection: React.FC = () => {
           </p>
         </div>
 
-        {/* Gold-Framed 3D Curved Arch Carousel */}
+        {/* Gold-Framed 3D Curved Arch Carousel with Touch Swipe + Trackpad Wheel */}
         <div
-          className="relative h-[380px] sm:h-[450px] flex items-center justify-center select-none cursor-grab active:cursor-grabbing"
+          {...swipeHandlers}
+          className="relative h-[380px] sm:h-[450px] flex items-center justify-center select-none cursor-grab active:cursor-grabbing touch-pan-y"
           style={{ perspective: '1500px' }}
-          onPointerDown={(e) => {
-            dragStartX.current = e.clientX;
-          }}
-          onPointerUp={(e) => {
-            if (dragStartX.current === null) return;
-            const delta = e.clientX - dragStartX.current;
-            dragStartX.current = null;
-            if (Math.abs(delta) > 40) {
-              if (delta > 0) goPrev();
-              else goNext();
-            }
-          }}
         >
           <div className="relative w-full h-full flex items-center justify-center preserve-3d">
             {occasionProducts.map((product, idx) => {
@@ -109,7 +110,6 @@ export const OccasionCollectionSection: React.FC = () => {
                       'transform 640ms cubic-bezier(0.22, 1, 0.36, 1), opacity 480ms ease',
                   }}
                 >
-                  {/* Arch-Topped Card Shell */}
                   <div
                     className={`relative w-full h-full overflow-hidden rounded-t-[140px] rounded-b-[18px] bg-[#FAF4EE] ${
                       isCenter
@@ -117,12 +117,10 @@ export const OccasionCollectionSection: React.FC = () => {
                         : 'ring-1 ring-[#C6A46A]/45 shadow-[0_14px_30px_-10px_rgba(40,35,38,0.18)]'
                     }`}
                   >
-                    {/* Subtle Inner Champagne Filigree Line on Center Card */}
                     {isCenter && (
                       <div className="absolute inset-1.5 rounded-t-[134px] rounded-b-[14px] border border-[#E6CB96]/70 z-20 pointer-events-none" />
                     )}
 
-                    {/* Discount Tag on Selected Products */}
                     {product.discountPercent && (
                       <span className="absolute top-6 right-5 z-20 px-2.5 py-1 rounded-md bg-[#702D45] text-[#FFFDF9] text-[10px] font-bold tracking-[0.12em] uppercase shadow-md tabular-nums">
                         {product.discountPercent}% OFF
@@ -143,7 +141,6 @@ export const OccasionCollectionSection: React.FC = () => {
             })}
           </div>
 
-          {/* Left / Right Navigation Arrows */}
           <button
             type="button"
             onClick={goPrev}
@@ -163,8 +160,38 @@ export const OccasionCollectionSection: React.FC = () => {
           </button>
         </div>
 
-        {/* Centered Details Beneath Active Arch Card (Matches Blueprint) */}
-        <div className="mt-6 max-w-xl mx-auto text-center">
+        {/* Mobile-Friendly Horizontally Scrollable Occasion Thumbnail Strip */}
+        <div
+          ref={thumbStripRef}
+          className="mt-3 flex items-center gap-2 overflow-x-auto snap-x snap-mandatory no-scrollbar py-1.5 justify-start sm:justify-center max-w-xl mx-auto"
+        >
+          {occasionProducts.map((prod, idx) => {
+            const isSelected = idx === activeIndex;
+            return (
+              <button
+                key={prod.id}
+                type="button"
+                onClick={() => setActiveIndex(idx)}
+                aria-label={`Preview ${prod.name}`}
+                className={`snap-center shrink-0 w-11 h-14 rounded-t-full rounded-b-lg overflow-hidden border-2 transition-all ${
+                  isSelected
+                    ? 'border-[#C6A46A] scale-105 shadow-md'
+                    : 'border-[#EAE0D7] opacity-60 hover:opacity-100'
+                }`}
+              >
+                <img
+                  src={prod.image}
+                  alt={prod.name}
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover object-top"
+                />
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Centered Details Beneath Active Arch Card */}
+        <div className="mt-5 max-w-xl mx-auto text-center">
           <h3 className="font-editorial text-xl sm:text-2xl font-bold tracking-[0.12em] uppercase text-[#282326]">
             {activeProduct.name}
           </h3>
@@ -175,7 +202,6 @@ export const OccasionCollectionSection: React.FC = () => {
             Age: {activeProduct.ageGroup} · Sizes: {activeProduct.availableSizes.join(', ')}
           </p>
 
-          {/* Gold Price Display */}
           <div className="mt-3 flex items-baseline justify-center gap-2.5 tabular-nums">
             <span className="font-editorial text-2xl sm:text-[28px] font-bold text-[#B38A42]">
               {formatINR(activeProduct.price)}
@@ -187,14 +213,13 @@ export const OccasionCollectionSection: React.FC = () => {
             )}
           </div>
 
-          {/* Compact Size Picker Row */}
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5">
+          <div className="mt-4 flex items-center justify-start sm:justify-center gap-1.5 overflow-x-auto no-scrollbar py-1">
             {activeProduct.availableSizes.slice(0, 6).map((sz) => (
               <button
                 key={sz}
                 type="button"
                 onClick={() => setChosenSize(sz)}
-                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-colors tabular-nums ${
+                className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-colors tabular-nums ${
                   effectiveSize === sz
                     ? 'bg-[#702D45] text-white border-[#702D45]'
                     : 'bg-white text-[#282326]/75 border-[#DFD5CC] hover:border-[#702D45]'
@@ -205,7 +230,6 @@ export const OccasionCollectionSection: React.FC = () => {
             ))}
           </div>
 
-          {/* Wishlist Heart & Add to Cart Button */}
           <div className="mt-5 flex items-center justify-center gap-3">
             <button
               type="button"

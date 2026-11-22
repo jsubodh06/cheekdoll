@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { Heart, Plus } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight, Heart, Plus } from 'lucide-react';
 import { PRODUCTS, STYLE_CARDS, formatINR } from '../data/catalog';
 import { useStore } from '../context/StoreContext';
 import { StyleCardItem } from '../types';
+import { useHorizontalSwipe } from '../hooks/useHorizontalSwipe';
 
 interface TiltState {
   rx: number;
@@ -14,7 +15,6 @@ const FannedStyleCard: React.FC<{
   card: StyleCardItem;
   index: number;
   activeIndex: number;
-  total: number;
   onFocus: () => void;
   onAdd: () => void;
   onInspect: () => void;
@@ -75,7 +75,7 @@ const FannedStyleCard: React.FC<{
       onMouseDown={() => setTilt((prev) => ({ ...prev, pressed: true }))}
       onMouseUp={() => setTilt((prev) => ({ ...prev, pressed: false }))}
       aria-label={`${card.fullTitle} — ${formatINR(card.price)}`}
-      className="relative w-[195px] sm:w-[220px] lg:w-[235px] h-[350px] sm:h-[405px] lg:h-[430px] rounded-[24px] overflow-hidden cursor-pointer select-none shrink-0 -mx-4 sm:-mx-5 lg:-mx-4 focus-visible:outline-2 focus-visible:outline-[#702D45]"
+      className="relative w-[205px] sm:w-[225px] lg:w-[235px] h-[360px] sm:h-[405px] lg:h-[430px] rounded-[24px] overflow-hidden cursor-pointer select-none shrink-0 snap-center mx-1.5 lg:-mx-4 focus-visible:outline-2 focus-visible:outline-[#702D45]"
       style={{
         backgroundColor: card.cardBg,
         zIndex: isCenter ? 30 : 20 - absOffset * 3,
@@ -123,7 +123,7 @@ const FannedStyleCard: React.FC<{
         aria-hidden="true"
       >
         <p
-          className="font-condensed font-extrabold uppercase leading-[0.86] tracking-tight text-[44px] sm:text-[54px] lg:text-[58px] drop-shadow-[0_3px_10px_rgba(0,0,0,0.12)]"
+          className="font-condensed font-extrabold uppercase leading-[0.86] tracking-tight text-[46px] sm:text-[54px] lg:text-[58px] drop-shadow-[0_3px_10px_rgba(0,0,0,0.12)]"
           style={{ color: card.textColor }}
         >
           {card.titleTop}
@@ -178,8 +178,54 @@ export const PickAStyleSection: React.FC = () => {
   const { addToCart, toggleWishlist, isWishlisted, selectRackProduct } = useStore();
   // Default focus on card index 2 ("PRINCESS DREAM" deep berry) matching the visual blueprint
   const [activeIndex, setActiveIndex] = useState(2);
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const scrollRaf = useRef<number | null>(null);
 
+  const total = STYLE_CARDS.length;
   const activeCard = STYLE_CARDS[activeIndex];
+
+  const scrollCardIntoCenter = (idx: number) => {
+    setActiveIndex(idx);
+    const el = trackRef.current;
+    if (!el) return;
+    const inner = el.firstElementChild as HTMLElement | null;
+    const cardEl = inner?.children[idx] as HTMLElement | undefined;
+    if (cardEl && el.scrollWidth > el.clientWidth) {
+      const targetLeft = cardEl.offsetLeft - el.clientWidth / 2 + cardEl.clientWidth / 2;
+      el.scrollTo({ left: targetLeft, behavior: 'smooth' });
+    }
+  };
+
+  const goPrev = () => scrollCardIntoCenter((activeIndex - 1 + total) % total);
+  const goNext = () => scrollCardIntoCenter((activeIndex + 1) % total);
+
+  const swipeHandlers = useHorizontalSwipe({ onPrev: goPrev, onNext: goNext });
+
+  // Sync activeIndex when mobile user scrolls horizontally through cards
+  const handleHorizontalScroll = () => {
+    const el = trackRef.current;
+    if (!el || el.scrollWidth <= el.clientWidth) return;
+    if (scrollRaf.current) cancelAnimationFrame(scrollRaf.current);
+    scrollRaf.current = requestAnimationFrame(() => {
+      const centerX = el.scrollLeft + el.clientWidth / 2;
+      const inner = el.firstElementChild as HTMLElement | null;
+      if (!inner) return;
+      let closestIdx = activeIndex;
+      let minDist = Infinity;
+      Array.from(inner.children).forEach((child, idx) => {
+        const node = child as HTMLElement;
+        const cardCenter = node.offsetLeft + node.clientWidth / 2;
+        const dist = Math.abs(cardCenter - centerX);
+        if (dist < minDist) {
+          minDist = dist;
+          closestIdx = idx;
+        }
+      });
+      if (closestIdx !== activeIndex) {
+        setActiveIndex(closestIdx);
+      }
+    });
+  };
 
   const handleQuickAdd = (card: StyleCardItem) => {
     const prod = PRODUCTS.find((p) => p.id === card.productId);
@@ -201,7 +247,7 @@ export const PickAStyleSection: React.FC = () => {
     >
       <div className="max-w-[1400px] mx-auto">
         {/* Section Heading */}
-        <div className="text-center max-w-xl mx-auto mb-10 sm:mb-14">
+        <div className="text-center max-w-xl mx-auto mb-8 sm:mb-12">
           <h2 className="font-editorial text-4xl sm:text-5xl lg:text-[52px] font-bold text-[#702D45] tracking-tight">
             Pick a Style
           </h2>
@@ -209,47 +255,84 @@ export const PickAStyleSection: React.FC = () => {
             Every little personality deserves its own style.
           </p>
           <p className="mt-1 text-xs text-[#702D45]/70 font-medium tracking-wide">
-            Tilt a card, press it, discover your favourite.
+            Tilt a card, scroll or tap arrows to discover your favourite.
           </p>
         </div>
 
-        {/* 3D Fanned Arc Stage */}
-        <div
-          className="relative py-8 sm:py-12 overflow-x-auto lg:overflow-visible no-scrollbar"
-          style={{ perspective: '1600px' }}
-        >
-          <div className="flex items-center justify-start lg:justify-center px-10 lg:px-0 min-w-max lg:min-w-0 preserve-3d">
-            {STYLE_CARDS.map((card, idx) => (
-              <FannedStyleCard
-                key={card.id}
-                card={card}
-                index={idx}
-                activeIndex={activeIndex}
-                total={STYLE_CARDS.length}
-                onFocus={() => setActiveIndex(idx)}
-                onAdd={() => handleQuickAdd(card)}
-                onInspect={() => selectRackProduct(card.productId, true)}
-                isSaved={isWishlisted(card.productId)}
-                onToggleWish={() => toggleWishlist(card.productId, card.fullTitle)}
-              />
-            ))}
+        {/* 3D Fanned Arc Stage with Both Native Mobile Snap-Scroll & Prev/Next Buttons */}
+        <div className="relative" onWheel={swipeHandlers.onWheel}>
+          <button
+            type="button"
+            onClick={goPrev}
+            aria-label="Previous style card"
+            className="absolute left-0 sm:left-2 top-1/2 -translate-y-1/2 z-40 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white/95 hover:bg-[#702D45] text-[#702D45] hover:text-white border border-[#C6A46A]/35 shadow-md flex items-center justify-center transition-colors"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+
+          <button
+            type="button"
+            onClick={goNext}
+            aria-label="Next style card"
+            className="absolute right-0 sm:right-2 top-1/2 -translate-y-1/2 z-40 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white/95 hover:bg-[#702D45] text-[#702D45] hover:text-white border border-[#C6A46A]/35 shadow-md flex items-center justify-center transition-colors"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+
+          <div
+            ref={trackRef}
+            onScroll={handleHorizontalScroll}
+            className="relative py-10 sm:py-12 overflow-x-auto lg:overflow-visible snap-x snap-mandatory no-scrollbar"
+            style={{ perspective: '1600px' }}
+          >
+            <div className="flex items-center justify-start lg:justify-center px-16 sm:px-24 lg:px-0 min-w-max lg:min-w-0 preserve-3d">
+              {STYLE_CARDS.map((card, idx) => (
+                <FannedStyleCard
+                  key={card.id}
+                  card={card}
+                  index={idx}
+                  activeIndex={activeIndex}
+                  onFocus={() => scrollCardIntoCenter(idx)}
+                  onAdd={() => handleQuickAdd(card)}
+                  onInspect={() => selectRackProduct(card.productId, true)}
+                  isSaved={isWishlisted(card.productId)}
+                  onToggleWish={() => toggleWishlist(card.productId, card.fullTitle)}
+                />
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Active Card Interactive Action Strip */}
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-4 text-center">
-          <span className="text-xs font-medium text-[#282326]/65">
-            Selected:{' '}
-            <strong className="text-[#702D45] font-semibold">{activeCard.fullTitle}</strong>{' '}
-            · {formatINR(activeCard.price)}
-          </span>
-          <button
-            type="button"
-            onClick={() => selectRackProduct(activeCard.productId, true)}
-            className="text-xs font-semibold text-[#702D45] underline underline-offset-4 decoration-[#C6A46A] hover:text-[#541F33] transition-colors"
-          >
-            Inspect on The Rack →
-          </button>
+        {/* Scroll Indicator Dots + Active Card Interactive Action Strip */}
+        <div className="mt-4 flex flex-col items-center gap-3">
+          <div className="flex items-center gap-2">
+            {STYLE_CARDS.map((card, idx) => (
+              <button
+                key={card.id}
+                type="button"
+                onClick={() => scrollCardIntoCenter(idx)}
+                aria-label={`Select ${card.fullTitle}`}
+                className={`h-2 rounded-full transition-all duration-300 ${
+                  idx === activeIndex ? 'w-7 bg-[#702D45]' : 'w-2 bg-[#C98FA1]/50 hover:bg-[#702D45]/60'
+                }`}
+              />
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-4 text-center">
+            <span className="text-xs font-medium text-[#282326]/65">
+              Selected:{' '}
+              <strong className="text-[#702D45] font-semibold">{activeCard.fullTitle}</strong>{' '}
+              · {formatINR(activeCard.price)}
+            </span>
+            <button
+              type="button"
+              onClick={() => selectRackProduct(activeCard.productId, true)}
+              className="text-xs font-semibold text-[#702D45] underline underline-offset-4 decoration-[#C6A46A] hover:text-[#541F33] transition-colors"
+            >
+              Inspect on The Rack →
+            </button>
+          </div>
         </div>
       </div>
     </section>

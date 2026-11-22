@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useRef } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { SIX_MOODS } from '../data/catalog';
 import { useStore } from '../context/StoreContext';
 import { MoodArchive } from '../types';
@@ -12,7 +13,7 @@ const OrnateArchFrame: React.FC<{
     <button
       type="button"
       onClick={onSelect}
-      className="group relative flex flex-col items-center text-center focus-visible:outline-2 focus-visible:outline-[#702D45] rounded-2xl p-1"
+      className="group relative flex flex-col items-center text-center focus-visible:outline-2 focus-visible:outline-[#702D45] rounded-2xl p-1 w-[210px] sm:w-[225px] lg:w-auto shrink-0 snap-center"
       style={{ perspective: '900px' }}
     >
       {/* 3D Hover Arch Container */}
@@ -36,30 +37,30 @@ const OrnateArchFrame: React.FC<{
           className="absolute -inset-[5%] w-[110%] h-[110%] z-20 pointer-events-none drop-shadow-[0_4px_10px_rgba(198,164,106,0.25)] transition-transform duration-500 group-hover:scale-[1.015]"
           aria-hidden="true"
         >
-          {/* Ornamental Finial Spire at Apex */}
-          <path
-            d="M110 4 L114 14 L110 21 L106 14 Z"
-            fill="#C6A46A"
-          />
+          <path d="M110 4 L114 14 L110 21 L106 14 Z" fill="#C6A46A" />
           <circle cx="110" cy="24" r="3" fill="#C6A46A" />
-          {/* Outer Whimsical Ogee Fashion Arch */}
           <path
             d="M110 26 C110 26 92 48 64 58 C34 69 16 94 16 126 L16 298 C16 303 20 307 25 307 L195 307 C200 307 204 303 204 298 L204 126 C204 94 186 69 156 58 C128 48 110 26 110 26 Z"
-            stroke="url(#goldGrad)"
+            stroke={`url(#goldGrad-${index})`}
             strokeWidth="2.8"
           />
-          {/* Inner Delicate Filigree Arch */}
           <path
             d="M110 34 C110 34 94 54 68 63 C41 73 23 96 23 126 L23 293 C23 297 26 300 30 300 L190 300 C194 300 197 297 197 293 L197 126 C197 96 179 73 152 63 C126 54 110 34 110 34 Z"
             stroke="#C6A46A"
             strokeWidth="1"
             strokeOpacity="0.65"
           />
-          {/* Corner Accent Dots */}
           <circle cx="28" cy="295" r="2" fill="#C6A46A" />
           <circle cx="192" cy="295" r="2" fill="#C6A46A" />
           <defs>
-            <linearGradient id="goldGrad" x1="16" y1="20" x2="204" y2="307" gradientUnits="userSpaceOnUse">
+            <linearGradient
+              id={`goldGrad-${index}`}
+              x1="16"
+              y1="20"
+              x2="204"
+              y2="307"
+              gradientUnits="userSpaceOnUse"
+            >
               <stop stopColor="#DFC087" />
               <stop offset="0.5" stopColor="#B8914E" />
               <stop offset="1" stopColor="#DFC087" />
@@ -104,17 +105,26 @@ const OrnateArchFrame: React.FC<{
 
 export const SixMoodsSection: React.FC = () => {
   const { setActiveRackFilter, jumpToSection } = useStore();
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   const handleMoodClick = (mood: MoodArchive) => {
     setActiveRackFilter(mood.filterCategory);
     jumpToSection('the-rack');
   };
 
+  const scrollMoods = (dir: -1 | 1) => {
+    if (!scrollContainerRef.current) return;
+    scrollContainerRef.current.scrollBy({
+      left: dir * 240,
+      behavior: 'smooth',
+    });
+  };
+
   return (
     <section id="archive" className="relative bg-white py-20 sm:py-24 px-5 sm:px-10 lg:px-14">
       <div className="max-w-[1380px] mx-auto">
         {/* Editorial Header Row */}
-        <div className="relative flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-14">
+        <div className="relative flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-10 lg:mb-14">
           <div className="hidden lg:block w-52" aria-hidden="true" />
 
           <div className="text-center flex-1">
@@ -135,8 +145,36 @@ export const SixMoodsSection: React.FC = () => {
           </p>
         </div>
 
-        {/* Six Arch-Framed Exhibition Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-5 gap-y-10 sm:gap-x-6 lg:gap-x-5 items-start">
+        {/* Mobile/Tablet Scroll Controls + Hint */}
+        <div className="flex lg:hidden items-center justify-between mb-4">
+          <span className="text-[11px] font-medium text-[#282326]/55">
+            Swipe or use arrows to browse moods
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => scrollMoods(-1)}
+              aria-label="Scroll moods left"
+              className="w-9 h-9 rounded-full bg-[#FFFDF9] border border-[#E2D0D7] text-[#702D45] flex items-center justify-center shadow-xs active:scale-95"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollMoods(1)}
+              aria-label="Scroll moods right"
+              className="w-9 h-9 rounded-full bg-[#FFFDF9] border border-[#E2D0D7] text-[#702D45] flex items-center justify-center shadow-xs active:scale-95"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Six Arch-Framed Exhibition: Snap-Scroll Strip on Mobile/Tablet, 6-Col Gallery on Desktop */}
+        <div
+          ref={scrollContainerRef}
+          className="flex lg:grid lg:grid-cols-6 gap-5 lg:gap-5 overflow-x-auto lg:overflow-visible snap-x snap-mandatory no-scrollbar pt-3 pb-4 -mx-5 px-5 sm:-mx-10 sm:px-10 lg:mx-0 lg:px-0 items-start"
+        >
           {SIX_MOODS.map((mood, idx) => (
             <OrnateArchFrame
               key={mood.id}

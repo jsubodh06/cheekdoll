@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ArrowRight,
   ChevronLeft,
@@ -9,13 +9,13 @@ import {
 } from 'lucide-react';
 import { TRY_THE_LOOKS, formatINR } from '../data/catalog';
 import { useStore } from '../context/StoreContext';
+import { useHorizontalSwipe } from '../hooks/useHorizontalSwipe';
 
 export const TryTheLookSection: React.FC = () => {
   const { addToCart, addLookBundleToCart, toggleWishlist, isWishlisted } = useStore();
   // Start on look index 6 ("7 of 8 · Ivory Elegance") matching the visual blueprint
   const [activeIndex, setActiveIndex] = useState(6);
-  const dragStartX = useRef<number | null>(null);
-  const isDragging = useRef(false);
+  const stripRef = useRef<HTMLDivElement | null>(null);
 
   const total = TRY_THE_LOOKS.length;
   const activeLook = TRY_THE_LOOKS[activeIndex];
@@ -28,21 +28,19 @@ export const TryTheLookSection: React.FC = () => {
   const goPrev = () => setActiveIndex((prev) => (prev - 1 + total) % total);
   const goNext = () => setActiveIndex((prev) => (prev + 1) % total);
 
-  const handlePointerDown = (e: React.PointerEvent) => {
-    dragStartX.current = e.clientX;
-    isDragging.current = true;
-  };
+  const swipeHandlers = useHorizontalSwipe({ onPrev: goPrev, onNext: goNext });
 
-  const handlePointerUp = (e: React.PointerEvent) => {
-    if (!isDragging.current || dragStartX.current === null) return;
-    const delta = e.clientX - dragStartX.current;
-    isDragging.current = false;
-    dragStartX.current = null;
-    if (Math.abs(delta) > 42) {
-      if (delta > 0) goPrev();
-      else goNext();
+  // Keep active thumbnail visible in horizontal mobile scrubber strip
+  useEffect(() => {
+    const container = stripRef.current;
+    if (!container) return;
+    const activeBtn = container.children[activeIndex] as HTMLElement | undefined;
+    if (activeBtn) {
+      const targetLeft =
+        activeBtn.offsetLeft - container.clientWidth / 2 + activeBtn.clientWidth / 2;
+      container.scrollTo({ left: targetLeft, behavior: 'smooth' });
     }
-  };
+  }, [activeIndex]);
 
   const handleAddFullLook = () => {
     const bundleItems = activeLook.pieces.map((piece) => ({
@@ -67,13 +65,8 @@ export const TryTheLookSection: React.FC = () => {
       <div className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-stretch">
         {/* Left/Center 3D Fashion Stage (8 columns on desktop) */}
         <div
-          className="lg:col-span-8 relative flex flex-col justify-between rounded-[28px] bg-gradient-to-b from-[#FFFFFF] via-[#FBF7F8] to-[#F3E6EA] border border-[#E6D1D8]/80 shadow-[0_18px_48px_rgba(112,45,69,0.06)] overflow-hidden min-h-[540px] sm:min-h-[620px] select-none cursor-grab active:cursor-grabbing"
-          onPointerDown={handlePointerDown}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={() => {
-            isDragging.current = false;
-            dragStartX.current = null;
-          }}
+          {...swipeHandlers}
+          className="lg:col-span-8 relative flex flex-col justify-between rounded-[28px] bg-gradient-to-b from-[#FFFFFF] via-[#FBF7F8] to-[#F3E6EA] border border-[#E6D1D8]/80 shadow-[0_18px_48px_rgba(112,45,69,0.06)] overflow-hidden min-h-[560px] sm:min-h-[640px] select-none cursor-grab active:cursor-grabbing touch-pan-y"
         >
           {/* Stage Top Title */}
           <div className="relative z-30 text-center pt-8 sm:pt-10 px-6">
@@ -87,15 +80,14 @@ export const TryTheLookSection: React.FC = () => {
 
           {/* True 3D Curved Model Runway Stage */}
           <div
-            className="relative flex-1 flex items-center justify-center my-4"
+            className="relative flex-1 flex items-center justify-center my-3"
             style={{ perspective: '1400px' }}
           >
             {/* Soft Studio Runway Floor Reflection */}
             <div className="absolute bottom-4 inset-x-10 h-14 rounded-full bg-gradient-to-r from-transparent via-[#702D45]/10 to-transparent blur-xl pointer-events-none" />
 
-            <div className="relative w-full h-[380px] sm:h-[440px] flex items-center justify-center preserve-3d">
+            <div className="relative w-full h-[360px] sm:h-[430px] flex items-center justify-center preserve-3d">
               {TRY_THE_LOOKS.map((look, idx) => {
-                // Compute shortest circular offset (-3..+3)
                 let offset = idx - activeIndex;
                 if (offset > total / 2) offset -= total;
                 if (offset < -total / 2) offset += total;
@@ -119,7 +111,7 @@ export const TryTheLookSection: React.FC = () => {
                     type="button"
                     onClick={() => setActiveIndex(idx)}
                     aria-label={`Select look ${look.title}`}
-                    className="absolute top-1/2 left-1/2 w-[225px] sm:w-[275px] h-[340px] sm:h-[415px] rounded-2xl overflow-hidden focus-visible:outline-2 focus-visible:outline-[#702D45]"
+                    className="absolute top-1/2 left-1/2 w-[215px] sm:w-[270px] h-[325px] sm:h-[405px] rounded-2xl overflow-hidden focus-visible:outline-2 focus-visible:outline-[#702D45]"
                     style={{
                       transform: `translate(-50%, -50%) translate3d(${translateX}px, ${
                         absOffset * 8
@@ -168,8 +160,43 @@ export const TryTheLookSection: React.FC = () => {
             </button>
           </div>
 
-          {/* Bottom Counter & Drag Hint */}
-          <div className="relative z-30 flex flex-wrap items-center justify-between gap-3 px-6 pb-6 pt-2">
+          {/* Mobile-Friendly Horizontal Scrollable Look Scrubber Strip */}
+          <div className="relative z-30 px-4 sm:px-6 pb-2">
+            <div
+              ref={stripRef}
+              className="flex items-center gap-2 overflow-x-auto snap-x snap-mandatory no-scrollbar py-1.5 justify-start sm:justify-center"
+            >
+              {TRY_THE_LOOKS.map((look, idx) => {
+                const isSelected = idx === activeIndex;
+                return (
+                  <button
+                    key={look.id}
+                    type="button"
+                    onClick={() => setActiveIndex(idx)}
+                    aria-label={`Jump to look ${look.title}`}
+                    className={`snap-center shrink-0 flex items-center gap-2 pr-3 pl-1 py-1 rounded-full border transition-all text-left ${
+                      isSelected
+                        ? 'bg-[#702D45] text-white border-[#702D45] shadow-sm'
+                        : 'bg-white/85 text-[#282326]/75 border-[#E4D1D8] hover:border-[#702D45]/40'
+                    }`}
+                  >
+                    <img
+                      src={look.modelImage}
+                      alt=""
+                      referrerPolicy="no-referrer"
+                      className="w-7 h-7 rounded-full object-cover object-top shrink-0"
+                    />
+                    <span className="text-[11px] font-semibold whitespace-nowrap">
+                      {look.title}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Bottom Counter & Drag/Swipe Hint */}
+          <div className="relative z-30 flex flex-wrap items-center justify-between gap-3 px-6 pb-5 pt-1">
             <div className="hidden sm:block text-xs text-[#282326]/55 font-medium">
               {activeLook.ageLabel}
             </div>
@@ -180,9 +207,9 @@ export const TryTheLookSection: React.FC = () => {
               <span>{activeLook.title}</span>
             </div>
 
-            <div className="hidden sm:inline-flex items-center gap-1.5 text-xs text-[#282326]/60 font-medium">
+            <div className="mx-auto sm:mx-0 inline-flex items-center gap-1.5 text-xs text-[#282326]/60 font-medium">
               <Hand className="w-3.5 h-3.5 text-[#702D45]" />
-              <span>Scroll or drag</span>
+              <span>Swipe, scroll or drag</span>
             </div>
           </div>
         </div>

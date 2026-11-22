@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowRight, Play } from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight, Play } from 'lucide-react';
 import { HERO_CAMPAIGNS } from '../data/catalog';
 import { useStore } from '../context/StoreContext';
+import { useHorizontalSwipe } from '../hooks/useHorizontalSwipe';
 
 const TICKER_ITEMS = [
   'TRY THE LOOK',
@@ -17,6 +18,13 @@ export const HeroSection: React.FC = () => {
   const [activeSlide, setActiveSlide] = useState(0);
   const [mouseOffset, setMouseOffset] = useState({ x: 0, y: 0 });
   const [scrollY, setScrollY] = useState(0);
+
+  const goPrev = () =>
+    setActiveSlide((prev) => (prev - 1 + HERO_CAMPAIGNS.length) % HERO_CAMPAIGNS.length);
+  const goNext = () =>
+    setActiveSlide((prev) => (prev + 1) % HERO_CAMPAIGNS.length);
+
+  const swipeHandlers = useHorizontalSwipe({ onPrev: goPrev, onNext: goNext });
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -45,7 +53,8 @@ export const HeroSection: React.FC = () => {
       id="hero"
       onMouseMove={handleMouseMove}
       onMouseLeave={() => setMouseOffset({ x: 0, y: 0 })}
-      className="relative w-full min-h-[88vh] lg:min-h-[94vh] flex flex-col justify-between overflow-hidden bg-[#282326]"
+      {...swipeHandlers}
+      className="relative w-full min-h-[88vh] lg:min-h-[94vh] flex flex-col justify-between overflow-hidden bg-[#282326] touch-pan-y"
     >
       {/* Parallax Campaign Imagery Stack */}
       <div className="absolute inset-0 overflow-hidden">
@@ -82,7 +91,7 @@ export const HeroSection: React.FC = () => {
       {/* Main Hero Content */}
       <div className="relative z-30 flex-1 flex items-center pt-28 pb-12 px-5 sm:px-10 lg:px-16 max-w-[1400px] w-full mx-auto">
         <div
-          className="max-w-xl"
+          className="max-w-xl w-full"
           style={{
             transform: `translate3d(${mouseOffset.x * 0.35}px, ${mouseOffset.y * 0.25}px, 0)`,
             transition: 'transform 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -123,14 +132,14 @@ export const HeroSection: React.FC = () => {
             </button>
           </div>
 
-          {/* Campaign Film Trigger & Interactive Scene Switcher */}
-          <div className="mt-10 flex flex-wrap items-center gap-5">
+          {/* Campaign Film Trigger & Scrollable + Button-Driven Scene Switcher */}
+          <div className="mt-10 flex flex-wrap items-center gap-4 sm:gap-5">
             <button
               type="button"
               onClick={() => jumpToSection('muse-film')}
               className="inline-flex items-center gap-3 text-left group"
             >
-              <span className="w-11 h-11 rounded-full bg-[#FFFDF9]/18 backdrop-blur-md border border-[#C6A46A]/70 flex items-center justify-center text-[#FFFDF9] group-hover:bg-[#702D45] group-hover:border-[#702D45] transition-colors">
+              <span className="w-11 h-11 rounded-full bg-[#FFFDF9]/18 backdrop-blur-md border border-[#C6A46A]/70 flex items-center justify-center text-[#FFFDF9] group-hover:bg-[#702D45] group-hover:border-[#702D45] transition-colors shrink-0">
                 <Play className="w-4 h-4 fill-current ml-0.5" />
               </span>
               <span className="flex flex-col">
@@ -141,14 +150,22 @@ export const HeroSection: React.FC = () => {
               </span>
             </button>
 
-            <div className="flex items-center gap-2 pl-1">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-full py-1">
+              <button
+                type="button"
+                onClick={goPrev}
+                aria-label="Previous campaign look"
+                className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/25 text-white flex items-center justify-center shrink-0 transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
               {HERO_CAMPAIGNS.map((slide, idx) => (
                 <button
                   key={slide.id}
                   type="button"
                   onClick={() => setActiveSlide(idx)}
                   aria-label={`View campaign look: ${slide.label}`}
-                  className={`relative w-12 h-14 rounded-lg overflow-hidden border transition-all duration-300 ${
+                  className={`relative w-12 h-14 rounded-lg overflow-hidden border shrink-0 transition-all duration-300 ${
                     idx === activeSlide
                       ? 'border-[#C6A46A] scale-105 shadow-[0_0_0_2px_rgba(198,164,106,0.45)]'
                       : 'border-white/35 opacity-65 hover:opacity-100'
@@ -162,6 +179,14 @@ export const HeroSection: React.FC = () => {
                   />
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={goNext}
+                aria-label="Next campaign look"
+                className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/25 text-white flex items-center justify-center shrink-0 transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>
