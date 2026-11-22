@@ -1,0 +1,187 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ivory: #FFFDF9;
+  --color-blush: #F6DDE4;
+  --color-dusty-rose: #C98FA1;
+  --color-berry: #702D45;
+  --color-berry-dark: #541F33;
+  --color-champagne: #C6A46A;
+  --color-peach: #F7E8DD;
+  --color-charcoal: #282326;
+  --color-emerald-jewel: #1B5E43;
+  --color-ruby-jewel: #8A1C33;
+  --color-royal-jewel: #1E3A6D;
+
+  --font-serif: "Playfair Display", Georgia, serif;
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-condensed: "Barlow Condensed", "Arial Narrow", sans-serif;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    background-color: #FFFDF9;
+    color: #282326;
+    overflow-x: clip;
+  }
+
+  body {
+    overflow-x: clip;
+  }
+
+  h1, h2, h3, .font-editorial {
+    font-family: var(--font-serif);
+    text-wrap: balance;
+  }
+}
+
+.font-condensed {
+  font-family: var(--font-condensed);
+}
+
+.text-berry-gold-gradient {
+  background: linear-gradient(95deg, #702D45 0%, #A86B5E 48%, #C6A46A 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* 3D Spatial Utilities */
+.perspective-1200 {
+  perspective: 1200px;
+}
+
+.perspective-1600 {
+  perspective: 1600px;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+/* Ticker Marquee */
+@keyframes cheekdoll-marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-cheekdoll-marquee {
+  display: flex;
+  width: max-content;
+  animation: cheekdoll-marquee 34s linear infinite;
+}
+
+.animate-cheekdoll-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* Opposite Scrolling Muse Film Columns */
+@keyframes muse-scroll-up {
+  0% {
+    transform: translateY(0%);
+  }
+  100% {
+    transform: translateY(-50%);
+  }
+}
+
+@keyframes muse-scroll-down {
+  0% {
+    transform: translateY(-50%);
+  }
+  100% {
+    transform: translateY(0%);
+  }
+}
+
+.animate-muse-up {
+  animation: muse-scroll-up 32s linear infinite;
+}
+
+.animate-muse-down {
+  animation: muse-scroll-down 34s linear infinite;
+}
+
+/* Natural Hanging Garment Pendulum Sway */
+@keyframes hanger-sway {
+  0% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(2.4deg);
+  }
+  55% {
+    transform: rotate(-1.8deg);
+  }
+  80% {
+    transform: rotate(0.9deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+.hover-hanger-sway:hover .hanger-pendulum {
+  animation: hanger-sway 1.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Ken Burns Film Motion */
+@keyframes ken-burns {
+  0% {
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+  50% {
+    transform: scale(1.07) translate3d(-1.5%, -1%, 0);
+  }
+  100% {
+    transform: scale(1.02) translate3d(1%, 0.5%, 0);
+  }
+}
+
+.animate-ken-burns {
+  animation: ken-burns 14s ease-in-out infinite alternate;
+}
+
+/* Subtle Bokeh Float */
+@keyframes float-bokeh {
+  0%, 100% {
+    transform: translateY(0px) translateX(0px);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translateY(-18px) translateX(8px);
+    opacity: 0.7;
+  }
+}
+
+.animate-bokeh {
+  animation: float-bokeh 6s ease-in-out infinite;
+}
+
+/* Subtle Scrollbars */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-cheekdoll-marquee,
+  .animate-muse-up,
+  .animate-muse-down,
+  .animate-ken-burns,
+  .animate-bokeh {
+    animation: none !important;
+  }
+}

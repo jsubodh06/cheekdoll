@@ -1,0 +1,6 @@
+{
+  "name": "Cheekdoll Apparels",
+  "description": "Cheekdoll Apparels — Luxury 3D Indian girls' fashion boutique celebrating little looks and big dreams across festive lehengas, Anarkalis, sharara sets, and contemporary couture for ages 1–14.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
